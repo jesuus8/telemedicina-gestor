@@ -103,21 +103,6 @@ app.get("/api/modelos",function(req,res){
     });
 })
 
-app.get("/api/reservas",function(req,res){
-    var sql = "SELECT s.nombre, s.apellidos, c.nombre AS categoria, r.horas_estimadas, r.fecha_peticion AS fec_pet, r.fecha_inicio AS fec_ini, r.fecha_fin " +
-              "FROM reservas r " +
-              "JOIN sanitarios s ON s.id = r.sanitario " +
-              "JOIN recursos rc ON rc.id = r.recurso " +
-              "JOIN modelos m ON m.id = rc.modelo " +
-              "JOIN categorias c ON c.id = m.categoria";
-    conexion.query(sql, function(err, resultados){
-        if(err){
-            return res.status(500).json("Error en la base de datos");
-        }
-        res.status(200).json(resultados.rows);
-    });
-})
-
 app.get("/api/gestores/:id",function(req,res){
     var id = req.params.id;
     conexion.query("SELECT id, nombre, apellidos, usuario FROM gestores WHERE id = $1", [id], function(err, resultados){

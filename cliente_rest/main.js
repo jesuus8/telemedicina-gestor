@@ -683,40 +683,92 @@ function fechaMinisterio(fecha){
     return d.getFullYear() + "-" + mes + "-" + dia;
 }
 
+function nombreYApellidos(sanitario){
+    var espacio = sanitario.indexOf(" ");
+    if(espacio == -1){
+        return { nombre: sanitario, apellidos: "" };
+    }
+    return {
+        nombre: sanitario.substring(0, espacio),
+        apellidos: sanitario.substring(espacio + 1)
+    };
+}
+
 function enviarMinisterio(){
-    rest.get(conToken("/api/reservas"), function(estado, respuesta){
+    rest.get(conToken("/api/categorias"), function(estado, categorias){
         if(estado != 200){
-            alert("Error al obtener las reservas");
+            alert("Error al obtener las categorías");
             return;
         }
-        var datos = [];
-        for(var i = 0; i < respuesta.length; i++){
-            datos.push({
-                nombre: respuesta[i].nombre,
-                apellidos: respuesta[i].apellidos,
-                "categoría": respuesta[i].categoria,
-                horas_estimadas: respuesta[i].horas_estimadas,
-                fec_pet: fechaMinisterio(respuesta[i].fec_pet),
-                fec_ini: fechaMinisterio(respuesta[i].fec_ini),
-                fecha_fin: fechaMinisterio(respuesta[i].fecha_fin)
-            });
-        }
-        var envio = {
-            id_area: ID_AREA,
-            fecha: fechaMinisterio(new Date()),
-            datos: datos
-        };
-        console.log(envio);
-        if(!confirm("¿Enviar " + datos.length + " reservas al Ministerio?")){
-            return;
-        }
-        rest.post(URL_MINISTERIO, envio, function(estado, respuesta){
-            if(estado == 200 || estado == 201){
-                alert("Reservas enviadas al Ministerio");
-            } else {
-                alert("Error al enviar las reservas: " + estado);
+        rest.get(conToken("/api/modelos"), function(estado, modelos){
+            if(estado != 200){
+                alert("Error al obtener los modelos");
+                return;
             }
+            rest.get(conToken("/api/recursos?categoria=Todos&modelo=Todos&ubicacion=Todos&estado=Todos"), function(estado, recursos){
+                if(estado != 200){
+                    alert("Error al obtener los recursos");
+                    return;
+                }
+                if(recursos.length == 0){
+                    alert("No hay recursos");
+                    return;
+                }
+                var datos = [];
+                var contador = 0;
+                var error = false;
+                for(var i = 0; i < recursos.length; i++){
+                    let recurso = recursos[i];
+                    rest.get(conToken("/api/recursos/" + recurso.id + "/reservas"), function(estado, reservas){
+                        if(estado != 200){
+                            error = true;
+                        } else {
+                            var modelo = modelos.find(m => m.id == recurso.modelo);
+                            var categoria = categorias.find(c => c.id == modelo.categoria);
+                            for(var j = 0; j < reservas.length; j++){
+                                var persona = nombreYApellidos(reservas[j].sanitario);
+                                datos.push({
+                                    nombre: persona.nombre,
+                                    apellidos: persona.apellidos,
+                                    "categoría": categoria.nombre,
+                                    horas_estimadas: reservas[j].horas_estimadas,
+                                    fec_pet: fechaMinisterio(reservas[j].fecha_peticion),
+                                    fec_ini: fechaMinisterio(reservas[j].fecha_inicio),
+                                    fecha_fin: fechaMinisterio(reservas[j].fecha_fin)
+                                });
+                            }
+                        }
+                        contador++;
+                        if(contador == recursos.length){
+                            if(error){
+                                alert("Error al obtener las reservas de algún recurso");
+                                return;
+                            }
+                            subirMinisterio(datos);
+                        }
+                    });
+                }
+            });
         });
+    });
+}
+
+function subirMinisterio(datos){
+    var envio = {
+        id_area: ID_AREA,
+        fecha: fechaMinisterio(new Date()),
+        datos: datos
+    };
+    console.log(envio);
+    if(!confirm("¿Enviar " + datos.length + " reservas al Ministerio?")){
+        return;
+    }
+    rest.post(URL_MINISTERIO, envio, function(estado, respuesta){
+        if(estado == 200 || estado == 201){
+            alert("Reservas enviadas al Ministerio");
+        } else {
+            alert("Error al enviar las reservas: " + estado);
+        }
     });
 }
 
