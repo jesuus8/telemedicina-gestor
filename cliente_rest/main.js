@@ -857,3 +857,54 @@ function cargarRanking(){
         }
     });
 }
+
+function contarRegistrosUnaReserva(){
+    var id_area = parseInt(document.getElementById("id_area_registros").value);
+    if(isNaN(id_area)){
+        alert("Introduce un id_area");
+        return;
+    }
+    rest.get(URL_MINISTERIO, function(estado, respuesta){
+        if(estado != 200 || !Array.isArray(respuesta)){
+            alert("Error al obtener los datos del Ministerio");
+            return;
+        }
+        var registros = 0;
+        for(var i = 0; i < respuesta.length; i++){
+            if(respuesta[i].id_area == id_area && Array.isArray(respuesta[i].datos) && respuesta[i].datos.length == 1){
+                registros++;
+            }
+        }
+        alert("Existen " + registros + " registros con una sola reserva");
+    });
+}
+
+var AREA_DNI = 9;
+
+function mediaHorasArea(){
+    rest.get(URL_MINISTERIO, function(estado, respuesta){
+        if(estado != 200 || !Array.isArray(respuesta)){
+            alert("Error al obtener los datos del Ministerio");
+            return;
+        }
+        var suma = 0;
+        var cantidad = 0;
+        for(var i = 0; i < respuesta.length; i++){
+            if(respuesta[i].id_area == AREA_DNI && Array.isArray(respuesta[i].datos)){
+                for(var j = 0; j < respuesta[i].datos.length; j++){
+                    var reserva = respuesta[i].datos[j];
+                    if(reserva != null && typeof reserva.horas_estimadas == "number"){
+                        suma = suma + reserva.horas_estimadas;
+                        cantidad++;
+                    }
+                }
+            }
+        }
+        if(cantidad == 0){
+            alert("No hay reservas con horas estimadas en el área de " + AREAS[AREA_DNI]);
+            return;
+        }
+        var media = Math.round(suma / cantidad * 100) / 100;
+        alert("La media de horas estimadas de uso de las reservas del área de " + AREAS[AREA_DNI] + " es " + media);
+    });
+}
